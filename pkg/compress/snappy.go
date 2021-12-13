@@ -1,4 +1,4 @@
-package snappy
+package compress
 
 import (
 	"net/http"
@@ -6,36 +6,35 @@ import (
 	snappypkg "github.com/golang/snappy"
 
 	"github.com/mYmNeo/transport/pkg/reader"
-	"github.com/mYmNeo/transport/pkg/rt"
 	"github.com/mYmNeo/transport/pkg/utils"
 )
 
 const (
-	EncodingName = "snappy"
+	SnappyEncodingName = "snappy"
 )
 
 func init() {
-	rt.RegisterCompressionRoundTripperBuilder(EncodingName, builder)
+	RegisterCompressionRoundTripperBuilder(SnappyEncodingName, snappyBuilder)
 }
 
 type snappyRoundTripper struct {
 	base http.RoundTripper
 }
 
-func builder(rt http.RoundTripper) http.RoundTripper {
+func snappyBuilder(rt http.RoundTripper) http.RoundTripper {
 	return &snappyRoundTripper{
 		base: rt,
 	}
 }
 
 func (r *snappyRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Set("Accept-Encoding", utils.AppendContentEncoding(req.Header.Get("Accept-Encoding"), EncodingName))
+	req.Header.Set("Accept-Encoding", utils.AppendContentEncoding(req.Header.Get("Accept-Encoding"), SnappyEncodingName))
 	resp, err := r.base.RoundTrip(req)
 	if err != nil {
 		return nil, err
 	}
 
-	matched := utils.MatchContentEncoding(resp.Header.Get("Content-Encoding"), EncodingName)
+	matched := utils.MatchContentEncoding(resp.Header.Get("Content-Encoding"), SnappyEncodingName)
 	if !matched {
 		return resp, nil
 	}

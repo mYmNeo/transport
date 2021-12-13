@@ -1,4 +1,4 @@
-package test
+package transport
 
 import (
 	"io"
@@ -6,12 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	snappyw "github.com/golang/snappy"
-	lz4w "github.com/pierrec/lz4/v4"
+	"github.com/golang/snappy"
+	"github.com/pierrec/lz4/v4"
 
-	"github.com/mYmNeo/transport/pkg/compress/lz4"
-	"github.com/mYmNeo/transport/pkg/compress/snappy"
-	"github.com/mYmNeo/transport/pkg/rt"
 	"github.com/mYmNeo/transport/test/random"
 )
 
@@ -19,7 +16,7 @@ func TestLZ4RoundTripper(t *testing.T) {
 	testSize := []int64{1 << 10, 1 << 20, 1 << 24}
 
 	for _, size := range testSize {
-		generator, err := random.NewRandomGenerator(size, lz4w.NewWriter(nil))
+		generator, err := random.NewRandomGenerator(size, lz4.NewWriter(nil))
 		if err != nil {
 			t.Errorf("can't create generator")
 			continue
@@ -27,7 +24,7 @@ func TestLZ4RoundTripper(t *testing.T) {
 
 		func() {
 			s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-				w.Header().Set("Content-Encoding", lz4.EncodingName)
+				w.Header().Set("Content-Encoding", "lz4")
 				w.WriteHeader(http.StatusOK)
 
 				w.Write(generator.GetData())
@@ -36,7 +33,7 @@ func TestLZ4RoundTripper(t *testing.T) {
 			defer s.Close()
 			client := s.Client()
 
-			newRt := rt.NewCompressionRoundTripper(client.Transport)
+			newRt := NewCompressionRoundTripper(client.Transport)
 			client.Transport = newRt
 
 			resp, err := client.Get(s.URL)
@@ -74,7 +71,7 @@ func TestSnappyRoundTripper(t *testing.T) {
 	testSize := []int64{1 << 10, 1 << 20, 1 << 24}
 
 	for _, size := range testSize {
-		generator, err := random.NewRandomGenerator(size, snappyw.NewBufferedWriter(nil))
+		generator, err := random.NewRandomGenerator(size, snappy.NewBufferedWriter(nil))
 		if err != nil {
 			t.Errorf("can't create generator")
 			continue
@@ -82,7 +79,7 @@ func TestSnappyRoundTripper(t *testing.T) {
 
 		func() {
 			s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-				w.Header().Set("Content-Encoding", snappy.EncodingName)
+				w.Header().Set("Content-Encoding", "snappy")
 				w.WriteHeader(http.StatusOK)
 
 				w.Write(generator.GetData())
@@ -91,7 +88,7 @@ func TestSnappyRoundTripper(t *testing.T) {
 			defer s.Close()
 			client := s.Client()
 
-			client.Transport = rt.NewCompressionRoundTripper(client.Transport)
+			client.Transport = NewCompressionRoundTripper(client.Transport)
 
 			resp, err := client.Get(s.URL)
 			if err != nil {
